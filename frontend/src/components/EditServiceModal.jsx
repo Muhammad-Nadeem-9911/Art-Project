@@ -26,7 +26,7 @@ const EditServiceModal = ({ isOpen, service, onClose, fetchServices, showToast }
             if (selectedFile) {
                 const uploadFormData = new FormData();
                 uploadFormData.append('image', selectedFile);
-                const uploadRes = await fetch('http://localhost:5000/api/admin/upload', {
+                const uploadRes = await fetch('/api/admin/upload', {
                     method: 'POST',
                     body: uploadFormData
                 });
@@ -35,7 +35,7 @@ const EditServiceModal = ({ isOpen, service, onClose, fetchServices, showToast }
                 finalImageUrl = uploadData.imageUrl;
             }
 
-            const response = await fetch(`http://localhost:5000/api/admin/services/${service._id}`, {
+            const response = await fetch(`/api/admin/services/${service._id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

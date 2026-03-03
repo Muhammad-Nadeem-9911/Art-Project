@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import Navbar from './Navbar';
-import Footer from './Footer';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import PageHeader from './PageHeader';
+import AddToWishlist from './AddToWishlist';
+import AddToCart from './AddToCart';
+import Paginate from './Paginate';
 
 const CategoryArtworks = () => {
     const { categoryId } = useParams();
+    const [searchParams] = useSearchParams();
+    const pageNumber = Number(searchParams.get('page')) || 1;
     const [artworks, setArtworks] = useState([]);
+    const [pages, setPages] = useState(1);
+    const [page, setPage] = useState(1);
     const [categoryTitle, setCategoryTitle] = useState('Artworks');
     const [loading, setLoading] = useState(true);
-    const API_URL = import.meta.env.PROD ? '' : 'http://localhost:5000';
 
     useEffect(() => {
         const spinner = document.getElementById('spinner');
@@ -24,17 +28,19 @@ const CategoryArtworks = () => {
     useEffect(() => {
         const fetchArtworks = async () => {
             try {
-                const response = await fetch(`${API_URL}/api/paintings/category/${categoryId}`);
+                const response = await fetch(`/api/paintings/category/${categoryId}?pageNumber=${pageNumber}`);
                 if (response.ok) {
                     const data = await response.json();
-                    setArtworks(data);
+                    setArtworks(data.paintings);
+                    setPages(data.pages);
+                    setPage(data.page);
                     
                     // Try to set title from the first artwork's populated category
-                    if (data.length > 0 && data[0].category) {
-                        setCategoryTitle(data[0].category.title);
+                    if (data.paintings.length > 0 && data.paintings[0].category) {
+                        setCategoryTitle(data.paintings[0].category.title);
                     } else {
                         // Fallback: fetch service details if no artworks exist yet
-                        const serviceRes = await fetch(`${API_URL}/api/content/services`);
+                        const serviceRes = await fetch(`/api/content/services`);
                         if (serviceRes.ok) {
                             const services = await serviceRes.json();
                             const service = services.find(s => s._id === categoryId);
@@ -50,7 +56,7 @@ const CategoryArtworks = () => {
         };
 
         fetchArtworks();
-    }, [categoryId]);
+    }, [categoryId, pageNumber]);
 
     return (
         <>
@@ -64,7 +70,6 @@ const CategoryArtworks = () => {
                     }
                 `}
             </style>
-            <Navbar />
             <PageHeader title={categoryTitle} pageName="services" />
             <div className="container-fluid py-5">
                 <div className="container">
@@ -83,23 +88,29 @@ const CategoryArtworks = () => {
                         <div className="row g-4">
                             {artworks.map((art) => (
                                 <div key={art._id} className="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s" >
-                                    <Link to={`/artwork/${art._id}`} className="text-decoration-none">
-                                        <div className="bg-light rounded overflow-hidden shadow-sm h-100">
+                                    <div className="bg-light rounded overflow-hidden shadow-sm h-100">
+                                        <Link to={`/artwork/${art._id}`} className="text-decoration-none">
                                             <div className="position-relative overflow-hidden" style={{ height: '300px' }}>
                                                 <img className="img-fluid w-100 h-100" src={art.imageUrl} alt={art.title} style={{ objectFit: 'cover' }} />
                                             </div>
-                                            <div className="p-4">
+                                        </Link>
+                                        <div className="p-4">
+                                            <Link to={`/artwork/${art._id}`} className="text-decoration-none">
                                                 <h4 className="text-uppercase mb-2 text-dark">{art.title}</h4>
-                                                <p className="text-muted mb-0" style={{
-                                                    display: '-webkit-box',
-                                                    WebkitLineClamp: '2',
-                                                    WebkitBoxOrient: 'vertical',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                }}>{art.description}</p>
+                                            </Link>
+                                            <p className="text-muted mb-3" style={{
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: '2',
+                                                WebkitBoxOrient: 'vertical',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                            }}>{art.description}</p>
+                                            <div className="d-flex justify-content-between align-items-center">
+                                                <AddToWishlist paintingId={art._id} />
+                                                <AddToCart paintingId={art._id} />
                                             </div>
                                         </div>
-                                    </Link>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -108,9 +119,14 @@ const CategoryArtworks = () => {
                             <p className="fs-4 text-muted">No artworks found in this category yet.</p>
                         </div>
                     )}
+
+                    <Paginate 
+                        pages={pages} 
+                        page={page} 
+                        renderPageLink={(p) => `/category/${categoryId}?page=${p}`} 
+                    />
                 </div>
             </div>
-            <Footer />
         </>
     );
 };

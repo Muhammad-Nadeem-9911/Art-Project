@@ -7,9 +7,27 @@ const Painting = require('../models/Painting');
 // @access  Public
 router.get('/', async (req, res) => {
   try {
+    const pageSize = 12;
+    const page = Number(req.query.pageNumber) || 1;
+
+    const keyword = req.query.keyword
+      ? {
+          title: {
+            $regex: req.query.keyword,
+            $options: 'i',
+          },
+        }
+      : {};
+
+    const count = await Painting.countDocuments({ ...keyword });
     // Populate category to get the service title if needed
-    const paintings = await Painting.find().populate('category', 'title').sort({ createdAt: -1 });
-    res.json(paintings);
+    const paintings = await Painting.find({ ...keyword })
+      .populate('category', 'title')
+      .sort({ createdAt: -1 })
+      .limit(pageSize)
+      .skip(pageSize * (page - 1));
+      
+    res.json({ paintings, page, pages: Math.ceil(count / pageSize) });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
@@ -21,8 +39,17 @@ router.get('/', async (req, res) => {
 // @access  Public
 router.get('/category/:categoryId', async (req, res) => {
   try {
-    const paintings = await Painting.find({ category: req.params.categoryId }).populate('category', 'title').sort({ createdAt: -1 });
-    res.json(paintings);
+    const pageSize = 12;
+    const page = Number(req.query.pageNumber) || 1;
+
+    const count = await Painting.countDocuments({ category: req.params.categoryId });
+    const paintings = await Painting.find({ category: req.params.categoryId })
+      .populate('category', 'title')
+      .sort({ createdAt: -1 })
+      .limit(pageSize)
+      .skip(pageSize * (page - 1));
+      
+    res.json({ paintings, page, pages: Math.ceil(count / pageSize) });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');

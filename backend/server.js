@@ -5,6 +5,11 @@ const connectDB = require('./config/db');
 const paintingRoutes = require('./routes/paintingRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const contentRoutes = require('./routes/contentRoutes');
+const userRoutes = require('./routes/userRoutes');
+const orderRoutes = require('./routes/orderRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
+const contactRoutes = require('./routes/contactRoutes');
 const path = require('path');
 
 const app = express();
@@ -17,6 +22,11 @@ app.use(cors());
 app.use('/api/paintings', paintingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/content', contentRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/paintings', reviewRoutes);
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {

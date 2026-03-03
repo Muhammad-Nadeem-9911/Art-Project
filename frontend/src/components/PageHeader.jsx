@@ -8,7 +8,7 @@ const PageHeader = ({ title, pageName }) => {
     const fetchHeaderImage = async () => {
       if (!pageName) return;
       try {
-        const response = await fetch(`http://localhost:5000/api/content/page/${pageName}`);
+        const response = await fetch(`/api/content/page/${pageName}`);
         if (response.ok) {
           const data = await response.json();
           setBgImage(data.heroImageUrl);
@@ -22,17 +22,27 @@ const PageHeader = ({ title, pageName }) => {
   }, [pageName]);
 
   return (
-    <div
-      className="container-fluid page-header mb-5"
-      style={{
-        backgroundImage: `linear-gradient(rgba(0, 0, 0, .5), rgba(0, 0, 0, .5)), url(${bgImage})`,
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        paddingBottom: '20rem', // Push content up slightly
-      }}>
+    <>
+      <style>
+        {`
+          .page-header-responsive {
+            background-image: linear-gradient(rgba(0, 0, 0, .5), rgba(0, 0, 0, .5)), url(${bgImage});
+            min-height: 50vh;
+            display: flex;
+            align-items: center;
+            background-size: cover;
+            background-position: center;
+            padding-bottom: 3rem;
+          }
+          @media (max-width: 768px) {
+            .page-header-responsive {
+              min-height: 35vh;
+              padding-bottom: 0;
+            }
+          }
+        `}
+      </style>
+      <div className={`container-fluid page-header mb-5 page-header-responsive`}>
         <div className="container py-5">
             <h1 className="display-3 text-white mb-3 animated slideInDown">{title}</h1>
             <nav aria-label="breadcrumb animated slideInDown">
@@ -42,7 +52,8 @@ const PageHeader = ({ title, pageName }) => {
                 </ol>
             </nav>
         </div>
-    </div>
+      </div>
+    </>
   );
 };
 

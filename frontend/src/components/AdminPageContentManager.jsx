@@ -6,12 +6,12 @@ const pages = ['about', 'contact', 'services', 'artwork'];
 const AdminPageContentManager = ({ showToast }) => {
     const [contentData, setContentData] = useState({});
     const [selectedFiles, setSelectedFiles] = useState({});
-    const API_URL = import.meta.env.PROD ? '' : 'http://localhost:5000';
+    const [savingPage, setSavingPage] = useState(null);
 
     useEffect(() => {
         const fetchAllContent = async () => {
             try {
-                const res = await fetch(`${API_URL}/api/admin/page-content`);
+                const res = await fetch(`/api/admin/page-content`);
                 if (res.ok) {
                     const data = await res.json();
                     // Convert array to object keyed by pageName: { about: { ... }, contact: { ... } }
@@ -29,6 +29,7 @@ const AdminPageContentManager = ({ showToast }) => {
     }, []);
 
     const handleSave = async (pageName) => {
+        setSavingPage(pageName);
         const file = selectedFiles[pageName];
         let currentImageUrl = contentData[pageName]?.heroImageUrl || '';
         const oldImage = currentImageUrl;
@@ -39,7 +40,7 @@ const AdminPageContentManager = ({ showToast }) => {
                 const formData = new FormData();
                 formData.append('image', file);
                 
-                const uploadRes = await fetch(`${API_URL}/api/admin/upload`, {
+                const uploadRes = await fetch(`/api/admin/upload`, {
                     method: 'POST',
                     body: formData,
                 });
@@ -51,7 +52,7 @@ const AdminPageContentManager = ({ showToast }) => {
             }
 
             // 2. Save/Update Page Content
-            const response = await fetch(`${API_URL}/api/admin/page-content`, {
+            const response = await fetch(`/api/admin/page-content`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' }, // Include old image URL for deletion on backend
                 body: JSON.stringify({ 
@@ -76,7 +77,9 @@ const AdminPageContentManager = ({ showToast }) => {
         } catch (err) {
             console.error(err);
             showToast('Error saving content', 'error');
-        }  
+        } finally {
+            setSavingPage(null);
+        }
     };
 
     return (
@@ -107,14 +110,21 @@ const AdminPageContentManager = ({ showToast }) => {
             <h3 className="text-white mb-4">Page Headers (Hero Images)</h3>
             <div className="row g-3">
                 {pages.map(page => (
-                    <div key={page} className="col-md-4">
+                    <div key={page} className="col-12 col-md-6 col-lg-4">
                         <div className="bg-dark p-3 rounded">
                             <label className="text-white text-capitalize mb-2">{page} Page Header</label>
                             <ImageUpload 
                                 onFileSelect={(file) => setSelectedFiles({...selectedFiles, [page]: file})}
                                 initialImageUrl={contentData[page]?.heroImageUrl || ''}
                             />
-                            <button onClick={() => handleSave(page)} className="btn text-white w-100 mt-3" style={{ background: 'linear-gradient(to right, #0078D7, #00BCF2, #35C759)', boxShadow: '0 0 15px rgba(0, 188, 242, 0.5)', border: 'none' }}>Save</button>
+                            <button 
+                                onClick={() => handleSave(page)} 
+                                className="btn text-white w-100 mt-3" 
+                                style={{ background: 'linear-gradient(to right, #0078D7, #00BCF2, #35C759)', boxShadow: '0 0 15px rgba(0, 188, 242, 0.5)', border: 'none' }}
+                                disabled={savingPage === page}
+                            >
+                                {savingPage === page ? 'Saving...' : 'Save'}
+                            </button>
                         </div>
                     </div>
                 ))}

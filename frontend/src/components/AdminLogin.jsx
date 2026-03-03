@@ -6,6 +6,7 @@ import Footer from './Footer';
 const AdminLogin = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -17,8 +18,9 @@ const AdminLogin = () => {
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/api/admin/login', {
+            const response = await fetch('/api/admin/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password }),
@@ -33,6 +35,8 @@ const AdminLogin = () => {
         } catch (error) {
             console.error('Login error:', error);
             alert('An error occurred during login');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -66,7 +70,9 @@ const AdminLogin = () => {
                                             required 
                                         />
                                     </div>
-                                    <button type="submit" className="btn btn-primary w-100">Login</button>
+                                    <button type="submit" className="btn btn-primary w-100" disabled={isLoading}>
+                                        {isLoading ? 'Logging in...' : 'Login'}
+                                    </button>
                                 </form>
                             </div>
                         </div>

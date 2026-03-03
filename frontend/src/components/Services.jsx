@@ -7,7 +7,6 @@ import Footer from './Footer';
 
 const Services = () => {
   const [services, setServices] = useState([]);
-  const API_URL = import.meta.env.PROD ? '' : 'http://localhost:5000';
   useEffect(() => {
     const spinner = document.getElementById('spinner');
     if (spinner) {
@@ -20,7 +19,7 @@ const Services = () => {
 
     const fetchServices = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/content/services`);
+            const response = await fetch(`/api/content/services`);
             if (response.ok) {
                 const data = await response.json();
                 setServices(data);
@@ -66,13 +65,13 @@ const Services = () => {
                    
                     <div key={service._id} className={`service-item ${itemClass}`}>
                         <div className="row g-0 align-items-center">
-                            <div className={`col-md-5 ${imageOrderClass}`}>
+                            <div className={`col-md-5 col-lg-3 ${imageOrderClass}`}>
                                 <div className={`service-img p-5 wow ${animation}`} data-wow-delay="0.2s">
                                     <img className="img-fluid rounded-circle" src={service.imageUrl} alt={service.title} />
                                 </div>
                             </div>
-                            <div className="col-md-7">
-                                <div className={`service-text px-5 px-md-0 py-md-5 ${textAlignClass} wow ${animation}`} data-wow-delay="0.5s">
+                            <div className="col-md-7 col-lg-9">
+                                <div className={`service-text px-5 px-md-0 py-md-5 py-lg-3 ${textAlignClass} wow ${animation}`} data-wow-delay="0.5s">
                                     <h3 className="text-uppercase">{service.title}</h3>
                                     <p className="mb-4">{service.description}</p>
                                     <Link

@@ -1,11 +1,19 @@
 // d:\Projects\Art Portfolio\frontend\src\components\Contact.jsx
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Footer from './Footer';
 import PageHeader from './PageHeader';
 import Navbar from './Navbar';
 
  const Contact = () => {
+  const [sending, setSending] = useState(false);
+  const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
+  const [formResponse, setFormResponse] = useState({ type: '', message: '' });
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
   useEffect(() => {
     const spinner = document.getElementById('spinner');
     // Hide spinner
@@ -13,6 +21,34 @@ import Navbar from './Navbar';
         spinner.classList.remove('show');
     }
   }, []); // Empty dependency array ensures this runs once on mount
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSending(true);
+    setFormResponse({ type: '', message: '' });
+    try {
+        const res = await fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        const data = await res.json();
+        if (res.ok) {
+            setFormResponse({ type: 'success', message: data.message });
+            setFormData({ name: '', email: '', subject: '', message: '' }); // Clear form
+        } else {
+            setFormResponse({ type: 'error', message: data.message || 'An error occurred.' });
+        }
+    } catch (err) {
+        setFormResponse({ type: 'error', message: 'Could not connect to the server. Please try again later.' });
+    } finally {
+        setSending(false);
+        // Hide message after 5 seconds
+        setTimeout(() => {
+            setFormResponse({ type: '', message: '' });
+        }, 5000);
+    }
+  };
 
   return (
     <>
@@ -57,22 +93,29 @@ import Navbar from './Navbar';
                         </div>
                     </div>
                     <div className="bg-secondary rounded p-5">
-                        <form>
+                        {formResponse.message && (
+                            <div className={`alert ${formResponse.type === 'success' ? 'alert-success' : 'alert-danger'}`}>
+                                {formResponse.message}
+                            </div>
+                        )}
+                        <form onSubmit={handleSubmit}>
                             <div className="row g-3">
                                 <div className="col-md-6">
-                                    <input type="text" className="form-control border-0 bg-dark text-white py-3 px-4" placeholder="Your Name" style={{height: '55px'}} />
+                                    <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="form-control border-0 bg-dark text-white py-3 px-4" placeholder="Your Name" style={{height: '55px'}} required />
                                 </div>
                                 <div className="col-md-6">
-                                    <input type="email" className="form-control border-0 bg-dark text-white py-3 px-4" placeholder="Your Email" style={{height: '55px'}} />
+                                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="form-control border-0 bg-dark text-white py-3 px-4" placeholder="Your Email" style={{height: '55px'}} required />
                                 </div>
                                 <div className="col-12">
-                                    <input type="text" className="form-control border-0 bg-dark text-white py-3 px-4" placeholder="Subject" style={{height: '55px'}} />
+                                    <input type="text" name="subject" value={formData.subject} onChange={handleInputChange} className="form-control border-0 bg-dark text-white py-3 px-4" placeholder="Subject" style={{height: '55px'}} required />
                                 </div>
                                 <div className="col-12">
-                                    <textarea className="form-control border-0 bg-dark text-white py-3 px-4" rows="5" placeholder="Message"></textarea>
+                                    <textarea name="message" value={formData.message} onChange={handleInputChange} className="form-control border-0 bg-dark text-white py-3 px-4" rows="5" placeholder="Message" required></textarea>
                                 </div>
                                 <div className="col-12">
-                                    <button className="btn w-100 py-3 text-white" type="submit" style={{ background: 'linear-gradient(to right, #0078D7, #00BCF2, #35C759)', boxShadow: '0 0 15px rgba(0, 188, 242, 0.5)', border: 'none' }}>Send Message</button>
+                                    <button className="btn w-100 py-3 text-white" type="submit" style={{ background: 'linear-gradient(to right, #0078D7, #00BCF2, #35C759)', boxShadow: '0 0 15px rgba(0, 188, 242, 0.5)', border: 'none' }} disabled={sending}>
+                                        {sending ? 'Sending...' : 'Send Message'}
+                                    </button>
                                 </div>
                             </div>
                         </form>

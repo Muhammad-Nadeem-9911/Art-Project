@@ -23,7 +23,7 @@ const AddArtModal = ({ isOpen, onClose, fetchPaintings, services, showToast }) =
                 uploadFormData.append('images', file);
             });
             
-            const uploadRes = await fetch('http://localhost:5000/api/admin/upload-multiple', {
+            const uploadRes = await fetch('/api/admin/upload-multiple', {
                 method: 'POST',
                 body: uploadFormData
             });
@@ -31,7 +31,7 @@ const AddArtModal = ({ isOpen, onClose, fetchPaintings, services, showToast }) =
             const uploadData = await uploadRes.json();
             const finalImageUrls = uploadData.imageUrls;
 
-            const res = await fetch('http://localhost:5000/api/admin/paintings', {
+            const res = await fetch('/api/admin/paintings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

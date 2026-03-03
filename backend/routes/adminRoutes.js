@@ -3,12 +3,19 @@ const router = express.Router();
 const CarouselSlide = require('../models/CarouselSlide');
 const PageContent = require('../models/PageContent');
 const Service = require('../models/Service');
+const User = require('../models/User');
 const Painting = require('../models/Painting');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// Check for Cloudinary configuration on startup
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+  console.error('FATAL ERROR: Cloudinary environment variables are not configured. Please check your .env file or hosting provider settings.');
+  // In a production environment, you might want to exit if Cloudinary is essential.
+}
 
 // Configure Cloudinary
 cloudinary.config({
@@ -18,16 +25,22 @@ cloudinary.config({
 });
 
 const deleteImage = (imageUrl) => {
-    if (!imageUrl) return;
-    // Extract public ID from Cloudinary URL
-    // Example: https://res.cloudinary.com/.../upload/v1/art-portfolio/filename.jpg
-    const parts = imageUrl.split('/');
-    const filename = parts.pop().split('.')[0]; // remove extension
-    const publicId = `art-portfolio/${filename}`;
-    
-    cloudinary.uploader.destroy(publicId, (err) => {
-        if (err) console.error(`Failed to delete image from Cloudinary:`, err);
-    });
+    if (!imageUrl) return;    
+    try {
+        // Regex to extract the public ID from a Cloudinary URL.
+        // It looks for the path between the version (e.g., /v12345/) and the file extension.
+        // Example: from "https://res.cloudinary.com/.../upload/v123/art-portfolio/image.jpg"
+        // it extracts "art-portfolio/image"
+        const publicIdMatch = imageUrl.match(/upload\/(?:v\d+\/)?([^\.]+)/);
+        if (publicIdMatch && publicIdMatch[1]) {
+            const publicId = publicIdMatch[1];
+            cloudinary.uploader.destroy(publicId, (err) => {
+                if (err) console.error(`Failed to delete image from Cloudinary: ${publicId}`, err);
+            });
+        }
+    } catch (e) {
+        console.error('Could not parse public ID from Cloudinary URL for deletion:', imageUrl, e);
+    }
 };
 
 // --- Multer Setup for Cloudinary ---
@@ -40,51 +53,49 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage: storage });
 
-// @route   POST api/admin/login
-// @desc    Authenticate admin user
-// @access  Public
-router.post('/login', (req, res) => {
-    const { username, password } = req.body;
-
-    // In a real-world app, passwords should be hashed and stored securely.
-    // For this project, we'll compare against environment variables for simplicity.
-    if (
-        username === process.env.ADMIN_USERNAME &&
-        password === process.env.ADMIN_PASSWORD
-    ) {
-        // For now, we send a simple success message.
-        // Later, we will replace this with a secure token (JWT).
-        res.json({ success: true, message: 'Login successful' });
-    } else {
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-});
-
 // @route   POST api/admin/upload
 // @desc    Upload an image
-router.post('/upload', upload.single('image'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ msg: 'No file uploaded.' });
-    }
-    // The URL to access the file on the server
-    res.json({ imageUrl: req.file.path });
+router.post('/upload', (req, res) => {
+    const uploader = upload.single('image');
+    uploader(req, res, function (err) {
+        if (err) {
+            console.error('Upload error:', err);
+            return res.status(500).json({ msg: 'File upload failed.', error: err.message });
+        }
+        if (!req.file) {
+            return res.status(400).json({ msg: 'No file uploaded.' });
+        }
+        res.json({ imageUrl: req.file.path });
+    });
 });
 
 // @route   POST api/admin/upload-multiple
 // @desc    Upload multiple images
-router.post('/upload-multiple', upload.array('images'), (req, res) => {
-    if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ msg: 'No files uploaded.' });
-    }
-    const imageUrls = req.files.map(file => file.path);
-    res.json({ imageUrls });
+router.post('/upload-multiple', (req, res) => {
+    const uploader = upload.array('images');
+    uploader(req, res, function (err) {
+        if (err) {
+            console.error('Upload error:', err);
+            return res.status(500).json({ msg: 'File upload failed.', error: err.message });
+        }
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ msg: 'No files uploaded.' });
+        }
+        const imageUrls = req.files.map(file => file.path);
+        res.json({ imageUrls });
+    });
 });
 
 // @route   POST api/admin/carousel
 // @desc    Add a new carousel slide
-router.post('/carousel', async (req, res) => {
+router.post('/carousel', upload.single('image'), async (req, res) => {
     try {
-        const newSlide = await CarouselSlide.create(req.body);
+        const { title, subtitle } = req.body;
+        const imageUrl = req.file ? req.file.path : '';
+        if (!imageUrl) {
+            return res.status(400).json({ msg: 'Image is required.' });
+        }
+        const newSlide = await CarouselSlide.create({ title, subtitle, imageUrl });
         res.status(201).json(newSlide);
     } catch (err) {
         console.error(err.message);
@@ -110,15 +121,22 @@ router.delete('/carousel/:id', async (req, res) => {
 
 // @route   PUT api/admin/carousel/:id
 // @desc    Update a carousel slide
-router.put('/carousel/:id', async (req, res) => {
-    const { title, subtitle, imageUrl, oldImage } = req.body;
+router.put('/carousel/:id', upload.single('image'), async (req, res) => {
+    const { title, subtitle, oldImage } = req.body;
+    const updateData = { title, subtitle };
+
     try {
-        if (oldImage) {
-            deleteImage(oldImage);
+        // If a new image is uploaded, use its path and delete the old one.
+        if (req.file) {
+            updateData.imageUrl = req.file.path;
+            if (oldImage) {
+                deleteImage(oldImage);
+            }
         }
+        
         const updatedSlide = await CarouselSlide.findByIdAndUpdate(
             req.params.id,
-            { title, subtitle, imageUrl },
+            updateData,
             { new: true }
         );
         if (!updatedSlide) {
@@ -172,9 +190,14 @@ router.put('/page-content', async (req, res) => {
 
 // @route   POST api/admin/services
 // @desc    Add a new service
-router.post('/services', async (req, res) => {
+router.post('/services', upload.single('image'), async (req, res) => {
     try {
-        const newService = await Service.create(req.body);
+        const { title, description } = req.body;
+        const imageUrl = req.file ? req.file.path : '';
+        if (!imageUrl) {
+            return res.status(400).json({ msg: 'Image is required.' });
+        }
+        const newService = await Service.create({ title, description, imageUrl });
         res.status(201).json(newService);
     } catch (err) {
         console.error(err.message);
@@ -184,15 +207,21 @@ router.post('/services', async (req, res) => {
 
 // @route   PUT api/admin/services/:id
 // @desc    Update a service
-router.put('/services/:id', async (req, res) => {
-    const { title, description, imageUrl, oldImage } = req.body;
+router.put('/services/:id', upload.single('image'), async (req, res) => {
+    const { title, description, oldImage } = req.body;
+    const updateData = { title, description };
+
     try {
-        if (oldImage) {
-            deleteImage(oldImage);
+        if (req.file) {
+            updateData.imageUrl = req.file.path;
+            if (oldImage) {
+                deleteImage(oldImage);
+            }
         }
+
         const updatedService = await Service.findByIdAndUpdate(
             req.params.id,
-            { title, description, imageUrl },
+            updateData,
             { new: true }
         );
         if (!updatedService) {
@@ -213,6 +242,9 @@ router.delete('/services/:id', async (req, res) => {
         if (service) {
             deleteImage(service.imageUrl);
         }
+        // Set category to null for all paintings that belong to this service/category
+        await Painting.updateMany({ category: req.params.id }, { $set: { category: null } });
+
         await Service.findByIdAndDelete(req.params.id);
         res.json({ msg: 'Service removed' });
     } catch (err) {
@@ -234,37 +266,77 @@ router.get('/paintings', async (req, res) => {
 });
 
 // @route   POST api/admin/paintings
-// @desc    Add a new painting
-router.post('/paintings', async (req, res) => {
+// @desc    Create a new painting
+router.post('/paintings', upload.array('images'), async (req, res) => {
     try {
-        const newPainting = await Painting.create(req.body);
+        const { title, category, description, price, countInStock } = req.body;
+        const images = req.files ? req.files.map(file => file.path) : [];
+        const imageUrl = images.length > 0 ? images[0] : '';
+
+        const newPainting = new Painting({
+            title,
+            category,
+            description,
+            price,
+            countInStock,
+            imageUrl,
+            images
+        });
+
+        await newPainting.save();
         res.status(201).json(newPainting);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
     }
 });
 
 // @route   PUT api/admin/paintings/:id
 // @desc    Update a painting
-router.put('/paintings/:id', async (req, res) => {
-    const { title, category, description, images, imageUrl, oldImages } = req.body;
+router.put('/paintings/:id', upload.array('images'), async (req, res) => {
     try {
-        if (oldImages && Array.isArray(oldImages)) {
-            oldImages.forEach(img => deleteImage(img));
+        const { title, category, description, price, countInStock, keptImages } = req.body;
+        const painting = await Painting.findById(req.params.id);
+
+        if (!painting) {
+            return res.status(404).json({ message: 'Painting not found' });
         }
-        const updatedPainting = await Painting.findByIdAndUpdate(
-            req.params.id,
-            { title, category, description, images, imageUrl },
-            { new: true }
-        );
-        if (!updatedPainting) {
-            return res.status(404).json({ msg: 'Painting not found' });
+
+        painting.title = title || painting.title;
+        painting.category = category || painting.category;
+        painting.description = description || painting.description;
+        painting.price = price || painting.price;
+        painting.countInStock = countInStock || painting.countInStock;
+
+        // Handle existing images
+        let currentImages = [];
+        if (keptImages) {
+            if (Array.isArray(keptImages)) {
+                currentImages = keptImages;
+            } else {
+                currentImages = [keptImages];
+            }
         }
+
+        // Delete removed images
+        if (painting.images && painting.images.length > 0) {
+            const imagesToDelete = painting.images.filter(img => !currentImages.includes(img));
+            imagesToDelete.forEach(img => deleteImage(img));
+        } else if (painting.imageUrl && !currentImages.includes(painting.imageUrl)) {
+            deleteImage(painting.imageUrl);
+        }
+
+        const newImages = req.files ? req.files.map(file => file.path) : [];
+        const finalImages = [...currentImages, ...newImages];
+        
+        painting.images = finalImages;
+        painting.imageUrl = finalImages.length > 0 ? finalImages[0] : '';
+
+        const updatedPainting = await painting.save();
         res.json(updatedPainting);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
     }
 });
 
@@ -272,19 +344,35 @@ router.put('/paintings/:id', async (req, res) => {
 // @desc    Delete a painting
 router.delete('/paintings/:id', async (req, res) => {
     try {
-        const painting = await Painting.findById(req.params.id);
+        const paintingId = req.params.id;
+        const painting = await Painting.findById(paintingId);
+
         if (painting) {
-            if (painting.images && Array.isArray(painting.images)) {
+            // Delete associated images from Cloudinary
+            if (painting.images && painting.images.length > 0) {
                 painting.images.forEach(img => deleteImage(img));
             } else if (painting.imageUrl) {
                 deleteImage(painting.imageUrl);
             }
+
+            // Remove the painting from all user wishlists and carts to prevent orphaned data
+            await User.updateMany(
+                {}, // An empty filter matches all documents
+                { 
+                    $pull: { 
+                        wishlist: paintingId, 
+                        cart: { painting: paintingId } 
+                    } 
+                }
+            );
         }
-        await Painting.findByIdAndDelete(req.params.id);
-        res.json({ msg: 'Painting removed' });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+
+        // Finally, delete the painting document itself
+        await Painting.findByIdAndDelete(paintingId);
+        res.json({ msg: 'Painting removed and associated user data cleaned up.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
     }
 });
 

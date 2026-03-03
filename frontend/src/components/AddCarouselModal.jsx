@@ -16,7 +16,7 @@ const AddCarouselModal = ({ isOpen, onClose, fetchSlides, showToast }) => {
         try {
             const uploadFormData = new FormData();
             uploadFormData.append('image', selectedFile);
-            const uploadRes = await fetch('http://localhost:5000/api/admin/upload', {
+            const uploadRes = await fetch('/api/admin/upload', {
                 method: 'POST',
                 body: uploadFormData
             });
@@ -24,7 +24,7 @@ const AddCarouselModal = ({ isOpen, onClose, fetchSlides, showToast }) => {
             const uploadData = await uploadRes.json();
             const finalImageUrl = uploadData.imageUrl;
 
-            await fetch('http://localhost:5000/api/admin/carousel', {
+            await fetch('/api/admin/carousel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...formData, imageUrl: finalImageUrl })

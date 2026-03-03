@@ -38,7 +38,7 @@ const EditArtModal = ({ isOpen, art, onClose, fetchPaintings, services, showToas
                 selectedFiles.forEach(file => {
                     uploadFormData.append('images', file);
                 });
-                const uploadRes = await fetch('http://localhost:5000/api/admin/upload-multiple', {
+                const uploadRes = await fetch('/api/admin/upload-multiple', {
                     method: 'POST',
                     body: uploadFormData
                 });
@@ -53,7 +53,7 @@ const EditArtModal = ({ isOpen, art, onClose, fetchPaintings, services, showToas
             // Determine which original images were removed to send to backend for deletion
             const imagesToDelete = originalImages.filter(img => !images.includes(img));
 
-            const response = await fetch(`http://localhost:5000/api/admin/paintings/${art._id}`, {
+            const response = await fetch(`/api/admin/paintings/${art._id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

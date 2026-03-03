@@ -8,12 +8,11 @@ function Home() {
     const [loading, setLoading] = useState(true);
     const [slides, setSlides] = useState([]);
     const [services, setServices] = useState([]);
-    const API_URL = import.meta.env.PROD ? '' : 'http://localhost:5000';
 
 
     const fetchCarouselSlides = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/content/carousel`);
+            const response = await fetch(`/api/content/carousel`);
             if (response.ok) {
                 const data = await response.json();
                 setSlides(data);
@@ -27,7 +26,7 @@ function Home() {
 
     const fetchServices = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/content/services`);
+            const response = await fetch(`/api/content/services`);
             if (response.ok) {
                 const data = await response.json();
                 setServices(data);
@@ -70,6 +69,38 @@ function Home() {
 
     return (
         <>
+            <style>
+                {`
+                    .carousel-image-responsive {
+                        object-fit: cover;
+                        width: 100%;
+                        height: 95vh;
+                    }
+                    .carousel-caption h1.display-1 {
+                        font-size: 6rem;
+                    }
+                    .about-section-responsive {
+                        padding-top: 3rem;
+                        padding-bottom: 3rem;
+                    }
+
+                    @media (max-width: 992px) {
+                        .about-section-responsive {
+                            padding-top: 1rem;
+                            padding-bottom: 1rem;
+                        }
+                    }
+
+                    @media (max-width: 768px) {
+                        .carousel-image-responsive {
+                            height: 55vh;
+                        }
+                        .carousel-caption h1.display-1 {
+                            font-size: 3rem;
+                        }
+                    }
+                `}
+            </style>
             {/* Header & Navbar */}
             <div className="container-fluid p-0">
                 <Navbar />
@@ -79,7 +110,7 @@ function Home() {
                         {slides.length > 0 ? (
                             slides.map((slide, index) => (
                                 <div key={slide._id} className={`carousel-item ${index === 0 ? 'active' : ''}`}>
-                                    <img className="d-block w-100" src={slide.imageUrl} alt={slide.title} style={{ objectFit: 'cover', width: '100%', height: '110vh' }}/>
+                                    <img className="d-block w-100 carousel-image-responsive" src={slide.imageUrl} alt={slide.title} />
                                     <div className="carousel-caption d-flex flex-column align-items-center justify-content-center">
                                         <div className="title mx-5 px-5 animated slideInDown">
                                             <div className="title-center">
@@ -94,7 +125,7 @@ function Home() {
                             ))
                         ) : (
                             <div className="carousel-item active">
-                                <img className="d-block w-100" src="/img/carousel-1.jpg" alt="Default" style={{ objectFit: 'cover', width: '100%', height: '110vh' }}/>
+                                <img className="d-block w-100 carousel-image-responsive" src="/img/carousel-1.jpg" alt="Default" />
                                 <div className="carousel-caption d-flex flex-column align-items-center justify-content-center">
                                     <div className="title mx-5 px-5 animated slideInDown">
                                         <div className="title-center">
@@ -122,7 +153,7 @@ function Home() {
             {/* About Section */}
             <div className="container-fluid bg-secondary">
                 <div className="container">
-                    <div className="row g-5 align-items-center">
+                    <div className="row g-5 align-items-center about-section-responsive">
                         <div className="col-lg-7 pb-0 pb-lg-5 py-5">
                             <div className="pb-0 pb-lg-5 py-5">
                                 <div className="title wow fadeInUp" data-wow-delay="0.1s">
@@ -167,13 +198,13 @@ function Home() {
                                             
                                             <div key={service._id} className={`service-item ${itemClass}`}>
                                                 <div className="row g-0 align-items-center">
-                                                    <div className={`col-md-5 ${imageOrderClass}`}>
+                                                    <div className={`col-md-5 col-lg-3 ${imageOrderClass}`}>
                                                         <div className={`service-img p-5 wow ${animation}`} data-wow-delay="0.2s">
                                                             <img className="img-fluid rounded-circle" src={service.imageUrl} alt={service.title} />
                                                         </div>
                                                     </div>
-                                                    <div className="col-md-7">
-                                                        <div className={`service-text px-5 px-md-0 py-md-5 ${textAlignClass} wow ${animation}`} data-wow-delay="0.5s">
+                                                    <div className="col-md-7 col-lg-9">
+                                                        <div className={`service-text px-5 px-md-0 py-md-5 py-lg-3 ${textAlignClass} wow ${animation}`} data-wow-delay="0.5s">
                                                             <h3 className="text-uppercase">{service.title}</h3>
                                                             <p className="mb-4">{service.description}</p>
                                                             <Link
